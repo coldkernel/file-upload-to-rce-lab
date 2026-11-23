@@ -89,6 +89,10 @@ A SOC that alerts on "web service process spawned a shell" catches this chain at
 
 A read primitive is not harmless once an attacker can also write chosen bytes to a known location. The interesting work is connecting weaknesses, and the same mental model that finds the chain also tells a defender which single event to alert on.
 
+## Runnable version
+
+A runnable version of this lab, with the exploit automated and Sigma rules verified against the logs it produces, is at [github.com/coldkernel/web-rce-detection-lab](https://github.com/coldkernel/web-rce-detection-lab).
+
 ---
 
 Scope and ethics: every step here ran against a lab I built and control. No third-party or production systems were tested, and this includes no certification exam content.
