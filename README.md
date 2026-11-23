@@ -26,11 +26,15 @@ None of these is critical by itself. The upload filter blocks the obvious payloa
 
 The include is the sink, so I need PHP code written somewhere on the host. Two paths work in this lab.
 
-**Path A, the upload.** The denylist blocks `.php` and `.phtml` but not every handler extension. Depending on the server config, `.pht` or a double extension slips past the check while still being parsed as PHP. The filter reads the last dot or a fixed list, so a name the filter does not recognize but the web server does is enough.
+#### Path A: the upload
 
-**Path B, the session file.** I do not even need a file that the server will execute directly. PHP writes session data to a predictable path, and it writes values I control. If I put PHP source into a value that lands in the session, the session file on disk now holds my code. The classic carrier is a header the app stores, for example the `User-Agent`, reflected into `$_SESSION`.
+The denylist blocks `.php` and `.phtml` but not every handler extension. Depending on the server config, `.pht` or a double extension slips past the check while still being parsed as PHP. The filter reads the last dot or a fixed list, so a name the filter does not recognize but the web server does is enough.
 
-Path B matters because it works even when the upload is locked down. The weakness is not the upload alone; it is that I can write bytes I choose to a path I can predict.
+#### Path B: the session file
+
+I do not even need a file that the server will execute directly. PHP writes session data to a predictable path, and it writes values I control. If I put PHP source into a value that lands in the session, the session file on disk now holds my code. The classic carrier is a header the app stores, for example the `User-Agent`, reflected into `$_SESSION`.
+
+Path B matters because it works even when the upload is locked down. The weakness is that I can write bytes I choose to a path I can predict, and the upload is only one way to do that.
 
 ## Stage 2: Local File Inclusion
 
@@ -63,15 +67,15 @@ From there, `?page=<session-file>&c=id` runs commands as the web server user. Th
 - The include passed user input straight into a filesystem path. Any value that walks the path or names another file is now in scope.
 - Sessions were written to a predictable location with attacker-influenced content, which turned a normal feature into a writable staging area.
 
-The lesson I took: severity lives in the chain, not the parts. A triage that rates each issue "low" in isolation misses the path that connects them.
+Severity comes from the chain. A triage that rates each issue low in isolation misses the path that connects them.
 
 ## How a defender would catch this
 
 This is the half I care about most, because it is where the offensive view pays off on the blue side.
 
-- **Upload anomaly:** a stored file whose extension and content type disagree, or a non-image written into an uploads directory. Maps to MITRE ATT&CK T1505.003 (web shell).
-- **Inclusion anomaly:** `include`/`require` resolving to a path outside the application root, or to `/var/lib/php/sessions/`, `/etc/`, or a `php://` wrapper. Visible in application logs and in file-access telemetry.
-- **The loud signal:** the web server process (`www-data`, `php-fpm`) spawning `/bin/sh`, `id`, `whoami`, or a network tool. A web server rarely has a legitimate reason to start a shell, so this is a high-confidence detection. Maps to T1059 (command and scripting interpreter).
+- A stored file whose extension and content type disagree, or a non-image written into an uploads directory. Maps to MITRE ATT&CK T1505.003 (web shell).
+- `include`/`require` resolving to a path outside the application root, or to `/var/lib/php/sessions/`, `/etc/`, or a `php://` wrapper. Visible in application logs and in file-access telemetry.
+- The web server process (`www-data`, `php-fpm`) spawning `/bin/sh`, `id`, `whoami`, or a network tool. A web server rarely has a legitimate reason to start a shell, so this is the loudest and most reliable signal in the chain. Maps to T1059 (command and scripting interpreter).
 
 A SOC that alerts on "web service process spawned a shell" catches this chain at the last stage even if every earlier step was missed.
 
